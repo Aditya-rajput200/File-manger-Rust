@@ -1,10 +1,43 @@
 use std::{fs, path};
 use std::path::Path;
+
+use chrono::Local;
+use colored::*;
+use dialoguer::theme;
+use dialoguer::{theme::ColorfulTheme, Input, Select};
+use indicatif::{ProgressBar, ProgressStyle};
+use walkdir::WalkDir;
+
+// #[derive(Parser, Debug)]
+// #[command(
+//     name = "File Organizer",
+//     author = "Aditya Raj",
+//     version = "3.0",
+//     about = "Organizes files BY size and types in Supersonic speed."
+// )]
+// struct Args {
+//     /// Folder path to organize
+//     #[arg(short, long)]
+//     path: String,
+
+//     /// Perform a dry run (no actual moves)
+//     #[arg(short, long, default_value_t = false)]
+//     dry_run: bool,
+
+//     /// Recurse into subdirectories
+//     #[arg(short, long, default_value_t = false)]
+//     recursive: bool,
+// }
+
 //detect the file type and seprate them
 fn file_type(exe: &str) -> &str {
     match exe {
         "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" => "Images",
         "mp4" | "mkv" | "mov" | "avi" => "Videos",
+         "mp3" | "wav" | "flac" => "Music",
+        "pdf" | "doc" | "docx" | "txt" => "Documents",
+        "zip" | "rar" | "7z" => "Archives",
+        "exe" | "msi" => "Applications",
         _ => "Others",
     }
 }
@@ -27,10 +60,22 @@ fn file_size_type(size:f64) -> &'static str {
      }
 }
 fn size_sepration (folder_path: &str) {
- let entries = fs::read_dir(folder_path).unwrap();
+
+
+ let entries:Vec<_> = fs::read_dir(folder_path)
+ .unwrap()
+ .filter_map(|e| e.ok())
+ .collect();;
+     let bar = ProgressBar::new(entries.len() as u64);
+    bar.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} files processed")
+            .unwrap()
+            .progress_chars("█▓░"),
+    );
 
  for  entry in entries {
-    let entry  = entry.unwrap();
+
     let path = entry.path();
 
     // now get the file size 
@@ -50,25 +95,37 @@ fn size_sepration (folder_path: &str) {
                 // move the file
                 fs::rename(&path, &new_path).unwrap();
 
-                println!(
-                    "Moved: {:?} → {:?}",
-                    path.file_name().unwrap(),
-                    new_path.display()
-                );
+            
     
     
 
     }
-    
+     bar.inc(1);
  }
-
+ bar.finish_with_message("✅ Size-based separation complete!");
+ println!("SuccesFully completd File Size Based sepration ✅✅✅")
 
 }
 
 fn types_sepration (folder_path: &str ) {
-    let entries = fs::read_dir(folder_path).unwrap();
+
+   // let entries = fs::read_dir(folder_path).unwrap();
+    let entries :Vec<_> = WalkDir::new(folder_path)
+    .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .collect();
+
+        let bar = ProgressBar::new(entries.len() as u64);
+    bar.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} files processed")
+            .unwrap()
+            .progress_chars("█▓░"),
+    );
+
        for entry in entries {
-        let entry = entry.unwrap();
+      
         let path = entry.path();
 
         //skip the folders
@@ -91,21 +148,37 @@ fn types_sepration (folder_path: &str ) {
                 // move the file
                 fs::rename(&path, &target_path).unwrap();
 
-                println!(
-                    "Moved: {:?} → {:?}",
-                    path.file_name().unwrap(),
-                    target_path.display()
-                );
+              
             }
         }
+         bar.inc(1);
     }
+     bar.finish_with_message("✅File Type-based separation completed!");
+     println!("SuccesFully completd File type Based sepration ✅✅✅")
 }
-fn main() {
-    let folder_path: &'static str = "E:/test";
-   types_sepration(folder_path);
 
-   size_sepration(folder_path);
-   
+
+
+fn main() {
+
+
+let options =vec!["Type based sepration","Size Based sepration","Exit"];
+
+ let folder_path:String = Input::new().with_prompt("Provide file path").interact_text().unwrap();
+
+ let selection = Select::with_theme(&theme::ColorfulTheme::default())
+  .with_prompt("Choose an action")
+        .items(&options)
+        .default(0)
+        .interact()
+        .unwrap();
+
+        match selection {
+            0 =>types_sepration(&folder_path),
+            1 => size_sepration(&folder_path), 
+            3 => println!("Good Bye.."),
+            _ => println!("Some thing went worng"),
+}
 
  
 }
